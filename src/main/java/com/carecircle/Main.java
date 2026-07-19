@@ -19,8 +19,26 @@ public class Main {
 
         // קוראים את מספר הפורט ממשתנה סביבה בשם PORT.
         // אם הוא לא הוגדר (למשל כשמריצים מקומית בלי Docker) — נשתמש כברירת מחדל בפורט 8080.
-        // זה חשוב כי כשנריץ בתוך Docker Compose, נרצה לשלוט בפורט מבחוץ בלי לשנות קוד.
         int port = Integer.parseInt(System.getenv().getOrDefault("PORT", "8080"));
+
+        // בונים את השרת דרך הפונקציה המשותפת (ראה למטה) - כך גם main וגם הטסטים
+        // משתמשים באותו קוד בדיוק, ולא כותבים אותו פעמיים.
+        HttpServer server = createServer(port);
+
+        // מפעילים את השרת בפועל - מהרגע הזה הוא מקשיב לבקשות.
+        server.start();
+
+        System.out.println("Care Circle server running on port " + port);
+    }
+
+    /**
+     * בונה HttpServer מוכן עם כל ה-endpoints מוגדרים, אבל עדיין לא מריץ אותו (לא קוראים start()).
+     * זה מאפשר לכל צד שקורא לפונקציה הזו (main, או טסטים) להחליט בעצמו מתי להריץ ומתי לעצור.
+     *
+     * static חשוב כאן: אין לנו אובייקט Main שנוצר (לא כתבנו new Main()), אז הפונקציה חייבת
+     * להיות static כדי שנוכל לקרוא לה ישירות דרך שם המחלקה: Main.createServer(...)
+     */
+    static HttpServer createServer(int port) throws IOException {
 
         // יוצרים את השרת עצמו, ואומרים לו על איזו כתובת/פורט להאזין.
         // ה-0 השני הוא "backlog" - כמה בקשות ממתינות מותר לצבור בתור לפני שדוחים; 0 = ברירת המחדל של המערכת.
@@ -47,9 +65,6 @@ public class Main {
         // null אומר לשרת להשתמש ב-executor המובנה שלו (thread לכל בקשה) - מספיק לצרכי הפרויקט הזה.
         server.setExecutor(null);
 
-        // מפעילים את השרת בפועל - מהרגע הזה הוא מקשיב לבקשות.
-        server.start();
-
-        System.out.println("Care Circle server running on port " + port);
+        return server;
     }
 }
