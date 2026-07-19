@@ -29,6 +29,7 @@ public class Main {
         server.start();
 
         System.out.println("Care Circle server running on port " + port);
+        System.out.println("הבדיקה עובדת");
     }
 
     /**
