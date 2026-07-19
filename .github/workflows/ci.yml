@@ -11,7 +11,7 @@ on:
     branches: [ main ]        # וגם כשנפתח/מתעדכן Pull Request לכיוון main
 
 jobs:
-  build-test:                 # שם ה-job שלנו (נשתמש בו בהמשך גם ב-Branch Protection)
+  ci:                 # שם ה-job שלנו (נשתמש בו בהמשך גם ב-Branch Protection)
     runs-on: ubuntu-latest    # המחשב הווירטואלי שעליו נריץ - לינוקס עדכני, נקי בכל הרצה
 
     steps:
