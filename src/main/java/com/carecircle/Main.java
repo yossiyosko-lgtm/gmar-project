@@ -6,6 +6,11 @@ import com.sun.net.httpserver.HttpServer;
 
 import java.io.IOException;
 import java.net.InetSocketAddress; // מייצג כתובת+פורט שהשרת יאזין להם
+import com.carecircle.model.Person;
+import com.carecircle.store.PeopleStore;
+import com.google.gson.Gson;
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 
 /**
  * נקודת הכניסה לתוכנית (Entry Point).
@@ -44,6 +49,11 @@ public class Main {
         // ה-0 השני הוא "backlog" - כמה בקשות ממתינות מותר לצבור בתור לפני שדוחים; 0 = ברירת המחדל של המערכת.
         HttpServer server = HttpServer.create(new InetSocketAddress(port), 0);
 
+        Gson gson = new Gson();
+
+        //המשתנה שיצרנו שמכיל את כל הפרופילים
+        PeopleStore peopleStore = new PeopleStore();
+
         // מגדירים "מסלול" (context): כל בקשה שמגיעה לכתובת /health תופעל דרך הקוד הזה.
         // exchange הוא האובייקט שמייצג את הבקשה שנכנסה ואת התשובה שנרצה לשלוח.
         server.createContext("/health", exchange -> {
@@ -61,10 +71,51 @@ public class Main {
             exchange.getResponseBody().write(response.getBytes());
             exchange.close();
         });
+        
+        // יצירת בקשה מסוג people
+        server.createContext("/people", exchange -> {
+            if (!"post".equalsIgnoreCase(exchange.getRequestMethod())){
+                String response = "{\"שגיאה\":\"סוג בקשה לא נתמך\"}"; 
+                
+            // מודיעים לדפדפן/ל-curl שהתוכן שאנחנו מחזירים הוא JSON.
+            exchange.getResponseHeaders().set("Content-Type", "application/json");
+
+            // שולחים את קוד הסטטוס 200 (הצלחה) יחד עם אורך התשובה בבתים.
+            exchange.sendResponseHeaders(405, response.getBytes().length);
+
+            // כותבים בפועל את גוף התשובה, וסוגרים את החיבור.
+            exchange.getResponseBody().write(response.getBytes());
+            exchange.close();
+            
+            return;
+        }
+            
+        InputStream inputStream = exchange.getRequestBody();
+        String json = new String(inputStream.readAllBytes(), StandardCharsets.UTF_8);
+
+        PersonRequest req = gson.fromJson(json, PersonRequest.class);
+        Person person = new Person(req.name, req.circleId);
+        peopleStore.save(person);
+        String responseJson = gson.toJson(person);
+
+            // מודיעים לדפדפן/ל-curl שהתוכן שאנחנו מחזירים הוא JSON.
+            exchange.getResponseHeaders().set("Content-Type", "application/json");
+
+            // שולחים את קוד הסטטוס 200 (הצלחה) יחד עם אורך התשובה בבתים.
+            exchange.sendResponseHeaders(201, responseJson.getBytes().length);
+
+            // כותבים בפועל את גוף התשובה, וסוגרים את החיבור.
+            exchange.getResponseBody().write(responseJson.getBytes());
+            exchange.close();
+        });
 
         // null אומר לשרת להשתמש ב-executor המובנה שלו (thread לכל בקשה) - מספיק לצרכי הפרויקט הזה.
         server.setExecutor(null);
 
         return server;
+    }
+    private static class PersonRequest{
+        String name;
+        String circleId;
     }
 }
