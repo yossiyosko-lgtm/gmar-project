@@ -11,4 +11,8 @@ public class PeopleStore {
     public void save(Person person){
     people.put(person.getId(), person);
     }
+
+    public Person findById(String id){
+        return people.get(id);
+    }
 }
