@@ -7,7 +7,9 @@ import com.sun.net.httpserver.HttpServer;
 import java.io.IOException;
 import java.net.InetSocketAddress; // מייצג כתובת+פורט שהשרת יאזין להם
 import com.carecircle.model.Person;
+import com.carecircle.model.CheckIn;
 import com.carecircle.store.PeopleStore;
+import com.carecircle.store.CheckInStore;
 import com.google.gson.Gson;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
@@ -53,6 +55,9 @@ public class Main {
 
         //המשתנה שיצרנו שמכיל את כל הפרופילים
         PeopleStore peopleStore = new PeopleStore();
+        
+        //המשתנה שמכיל את כל המידע על המשתמשים (שעת קימה זיכרון והכל)
+        CheckInStore checkInStore = new CheckInStore();
 
         // מגדירים "מסלול" (context): כל בקשה שמגיעה לכתובת /health תופעל דרך הקוד הזה.
         // exchange הוא האובייקט שמייצג את הבקשה שנכנסה ואת התשובה שנרצה לשלוח.
@@ -75,12 +80,12 @@ public class Main {
         // יצירת בקשה מסוג people
         server.createContext("/people", exchange -> {
             if (!"post".equalsIgnoreCase(exchange.getRequestMethod())){
-                String response = "{\"שגיאה\":\"סוג בקשה לא נתמך\"}"; 
+                String response = "{\"error\":\"post method require\"}"; 
                 
             // מודיעים לדפדפן/ל-curl שהתוכן שאנחנו מחזירים הוא JSON.
             exchange.getResponseHeaders().set("Content-Type", "application/json");
 
-            // שולחים את קוד הסטטוס 200 (הצלחה) יחד עם אורך התשובה בבתים.
+            // שולחים את קוד הסטטוס 405 כישלון יחד עם אורך התשובה בבתים.
             exchange.sendResponseHeaders(405, response.getBytes().length);
 
             // כותבים בפועל את גוף התשובה, וסוגרים את החיבור.
@@ -109,6 +114,98 @@ public class Main {
             exchange.close();
         });
 
+        //יצירת האזנה לבקשת קיבול נתונים על משתמש אחרי שנוצר, על ידי שליחת המזהה שלו
+        server.createContext("/people/", exchange -> {
+           
+            if(!"Get".equalsIgnoreCase(exchange.getRequestMethod())){
+                String response = "{\"error\":\"get method require\"}";
+            
+             // מודיעים לדפדפן/ל-curl שהתוכן שאנחנו מחזירים הוא JSON.
+            exchange.getResponseHeaders().set("Content-Type", "application/json");
+
+            // שולחים את קוד הסטטוס 405 כישלון יחד עם אורך התשובה בבתים.
+            exchange.sendResponseHeaders(405, response.getBytes().length);
+
+            // כותבים בפועל את גוף התשובה, וסוגרים את החיבור.
+            exchange.getResponseBody().write(response.getBytes());
+            exchange.close();
+            
+            return;
+            }
+            String path = exchange.getRequestURI().getPath();
+            String id = path.substring("/people/".length());
+
+            Person person = peopleStore.findById(id);
+
+            if(person == null){
+                String response = "{\"error\":\"id require\"}";
+            
+            // מודיעים לדפדפן/ל-curl שהתוכן שאנחנו מחזירים הוא JSON.
+            exchange.getResponseHeaders().set("Content-Type", "application/json");
+
+            // שולחים את קוד הסטטוס 404 כישלון יחד עם אורך התשובה בבתים.
+            exchange.sendResponseHeaders(404, response.getBytes().length);
+
+            // כותבים בפועל את גוף התשובה, וסוגרים את החיבור.
+            exchange.getResponseBody().write(response.getBytes());
+            exchange.close();
+            
+            return;
+          
+        }else{
+            
+            String responseJson = gson.toJson(person);
+
+            // מודיעים לדפדפן/ל-curl שהתוכן שאנחנו מחזירים הוא JSON.
+            exchange.getResponseHeaders().set("Content-Type", "application/json");
+
+            // שולחים את קוד הסטטוס 200 (הצלחה) יחד עם אורך התשובה בבתים.
+            exchange.sendResponseHeaders(200, responseJson.getBytes().length);
+
+            // כותבים בפועל את גוף התשובה, וסוגרים את החיבור.
+            exchange.getResponseBody().write(responseJson.getBytes());
+            exchange.close();
+
+            }
+        });
+
+        server.createContext("/checkins", exchange ->{
+             if (!"post".equalsIgnoreCase(exchange.getRequestMethod())){
+                String response = "{\"error\":\"post method require\"}"; 
+                
+            // מודיעים לדפדפן/ל-curl שהתוכן שאנחנו מחזירים הוא JSON.
+            exchange.getResponseHeaders().set("Content-Type", "application/json");
+
+            // שולחים את קוד הסטטוס 405 כישלון יחד עם אורך התשובה בבתים.
+            exchange.sendResponseHeaders(405, response.getBytes().length);
+
+            // כותבים בפועל את גוף התשובה, וסוגרים את החיבור.
+            exchange.getResponseBody().write(response.getBytes());
+            exchange.close();
+            
+            return;
+        }
+            
+        InputStream inputStream = exchange.getRequestBody();
+        String json = new String(inputStream.readAllBytes(), StandardCharsets.UTF_8);
+
+        CheckInsRequest req = gson.fromJson(json, CheckInsRequest.class);
+        CheckIn checkIn = new CheckIn(req.personId, req.type, req.value);
+        checkInStore.save(checkIn);
+        String responseJson = gson.toJson(checkIn);
+
+            // מודיעים לדפדפן/ל-curl שהתוכן שאנחנו מחזירים הוא JSON.
+            exchange.getResponseHeaders().set("Content-Type", "application/json");
+
+            // שולחים את קוד הסטטוס 201 (הצלחה) יחד עם אורך התשובה בבתים.
+            exchange.sendResponseHeaders(201, responseJson.getBytes().length);
+
+            // כותבים בפועל את גוף התשובה, וסוגרים את החיבור.
+            exchange.getResponseBody().write(responseJson.getBytes());
+            exchange.close();
+        });
+
+
         // null אומר לשרת להשתמש ב-executor המובנה שלו (thread לכל בקשה) - מספיק לצרכי הפרויקט הזה.
         server.setExecutor(null);
 
@@ -117,5 +214,11 @@ public class Main {
     private static class PersonRequest{
         String name;
         String circleId;
+    }
+
+    private static class CheckInsRequest{
+        String personId;
+        String type;
+        double value;
     }
 }
