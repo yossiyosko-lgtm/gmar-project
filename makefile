@@ -5,7 +5,7 @@
 
 # build - מקמפל את קוד ה-Java בלי ליצור jar, הכי מהיר לבדוק שאין שגיאות תחביר.
 build:
-	mvn compile
+	mvn clean compile
 
 # test - מריץ את כל הטסטים (JUnit). זו הפקודה שגם ה-CI מריץ בהמשך.
 test:
