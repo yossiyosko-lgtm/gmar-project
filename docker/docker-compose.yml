@@ -1,0 +1,10 @@
+
+services:
+  localstack:
+    image: localstack/localstack:2.3.2
+    ports:
+      - "4566:4566"
+    environment: 
+      -  SERVICE=dynamodb
+
+    container_name: care-circle-localstack
