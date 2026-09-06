@@ -13,6 +13,7 @@ import com.carecircle.store.CheckInStore;
 import com.google.gson.Gson;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
+import com.carecircle.service.SqsService;
 
 /**
  * נקודת הכניסה לתוכנית (Entry Point).
@@ -45,6 +46,9 @@ public class Main {
      * static חשוב כאן: אין לנו אובייקט Main שנוצר (לא כתבנו new Main()), אז הפונקציה חייבת
      * להיות static כדי שנוכל לקרוא לה ישירות דרך שם המחלקה: Main.createServer(...)
      */
+    static final String queueUrl = "http://sqs.us-east-1.localhost.localstack.cloud:4566/000000000000/checkin-queue";
+
+    
     static HttpServer createServer(int port) throws IOException {
 
         // יוצרים את השרת עצמו, ואומרים לו על איזו כתובת/פורט להאזין.
@@ -59,6 +63,7 @@ public class Main {
         //המשתנה שמכיל את כל המידע על המשתמשים (שעת קימה זיכרון והכל)
         CheckInStore checkInStore = new CheckInStore();
 
+        SqsService sqsService = new SqsService(queueUrl);
         // מגדירים "מסלול" (context): כל בקשה שמגיעה לכתובת /health תופעל דרך הקוד הזה.
         // exchange הוא האובייקט שמייצג את הבקשה שנכנסה ואת התשובה שנרצה לשלוח.
         server.createContext("/health", exchange -> {
@@ -192,6 +197,7 @@ public class Main {
         CheckInsRequest req = gson.fromJson(json, CheckInsRequest.class);
         CheckIn checkIn = new CheckIn(req.personId, req.type, req.value);
         checkInStore.save(checkIn);
+        sqsService.sendMessage(gson.toJson(checkIn));
         String responseJson = gson.toJson(checkIn);
 
             // מודיעים לדפדפן/ל-curl שהתוכן שאנחנו מחזירים הוא JSON.
@@ -211,6 +217,7 @@ public class Main {
 
         return server;
     }
+
     private static class PersonRequest{
         String name;
         String circleId;
