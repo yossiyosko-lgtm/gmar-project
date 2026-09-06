@@ -13,6 +13,12 @@ public class Person {
         this.circleId = circleId;
     }
 
+    public Person(String id, String name, String circleId){
+        this.id = id;
+        this.name = name;
+        this.circleId = circleId;
+    }
+
     public String getId(){
         return id;
     }

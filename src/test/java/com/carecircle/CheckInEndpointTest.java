@@ -73,7 +73,7 @@ public class CheckInEndpointTest {
         JsonObject requestBody = new JsonObject();
         requestBody.addProperty("personId", "0000");
         requestBody.addProperty("type", "wake_time");
-        requestBody.addProperty("value", "7.25");
+        requestBody.addProperty("value", 7.25);
         
         
         // שלב 1: בונים "לקוח HTTP" - האובייקט שיודע לשלוח בקשות רשת.
