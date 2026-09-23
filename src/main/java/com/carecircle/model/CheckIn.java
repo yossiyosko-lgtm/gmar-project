@@ -15,6 +15,14 @@ public class CheckIn {
         this.timestamp = System.currentTimeMillis();
     }
 
+    public CheckIn(String id, String personalId, String type, double value, long timestamp){
+        this.id = id;
+        this.personId = personalId;
+        this.type = type;
+        this.value = value;
+        this.timestamp = timestamp;
+    }
+
     public String getId(){
         return id;
     }
