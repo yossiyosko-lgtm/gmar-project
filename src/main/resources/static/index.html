@@ -1,0 +1,375 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Care Circle</title>
+<style>
+  :root{
+    --bg:#f4f6f8; --card:#ffffff; --ink:#1c2733; --muted:#66727f; --line:#e2e7ec;
+    --brand:#1f7a6d; --brand-ink:#ffffff; --brand-soft:#e3f2ef;
+    --gentle:#b7791f; --gentle-bg:#fdf3dc;
+    --urgent:#c53030; --urgent-bg:#fde8e8;
+    --ok:#2f855a; --ok-bg:#e6f4ec; --shadow:0 1px 3px rgba(20,30,40,.08);
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#12181e; --card:#1a232b; --ink:#e6edf3; --muted:#93a1ae; --line:#2a3641;
+      --brand:#3bb5a2; --brand-ink:#08201c; --brand-soft:#17342f;
+      --gentle:#f0b95a; --gentle-bg:#3a2e14;
+      --urgent:#f28b8b; --urgent-bg:#3d1b1b;
+      --ok:#68d391; --ok-bg:#16301f; --shadow:none;
+    }
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 system-ui,-apple-system,"Segoe UI",Arial,sans-serif}
+  header{background:var(--card);border-bottom:1px solid var(--line);padding:14px 16px}
+  .wrap{max-width:900px;margin:0 auto;padding:0 16px}
+  header .wrap{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:0}
+  h1{font-size:20px;margin:0}
+  h1 a{display:flex;align-items:center;gap:8px;color:inherit;text-decoration:none}
+  .logo{width:28px;height:28px;border-radius:50%;background:var(--brand);display:inline-block;position:relative}
+  .logo::after{content:"";position:absolute;inset:7px;border-radius:50%;border:3px solid var(--brand-ink)}
+  .status{font-size:14px;color:var(--muted);display:flex;align-items:center;gap:6px}
+  .dot{width:10px;height:10px;border-radius:50%;background:var(--muted)}
+  .dot.up{background:var(--ok)} .dot.down{background:var(--urgent)}
+  main{padding:20px 0 48px}
+  .view{display:none} .view.active{display:block}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px;box-shadow:var(--shadow);margin-bottom:16px}
+  h2{font-size:18px;margin:0 0 6px}
+  h3{font-size:16px;margin:0}
+  .hint{color:var(--muted);font-size:15px;margin:0 0 12px}
+  label{display:block;font-size:15px;color:var(--muted);margin:12px 0 4px}
+  input{width:100%;padding:12px 14px;border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--ink);font:inherit}
+  input:focus,button:focus-visible,summary:focus-visible,a:focus-visible{outline:2px solid var(--brand);outline-offset:2px}
+  button{font:inherit;cursor:pointer;border-radius:10px;border:1px solid transparent;padding:12px 18px;min-height:46px}
+  .primary{background:var(--brand);color:var(--brand-ink);font-weight:600}
+  .ghost{background:transparent;border-color:var(--line);color:var(--ink)}
+  .linkbtn{background:none;border:none;color:var(--muted);text-decoration:underline;padding:6px;min-height:0}
+  button:disabled{opacity:.5;cursor:not-allowed}
+  .row{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;align-items:center}
+
+  /* מסך הבית */
+  .choice{display:grid;gap:16px;grid-template-columns:1fr 1fr}
+  @media (max-width:640px){.choice{grid-template-columns:1fr}}
+  .big{display:block;text-decoration:none;color:inherit;background:var(--card);border:2px solid var(--line);border-radius:18px;padding:28px 20px;text-align:center;box-shadow:var(--shadow)}
+  .big:hover{border-color:var(--brand)}
+  .big .ico{font-size:52px;line-height:1.1}
+  .big strong{display:block;font-size:22px;margin-top:10px}
+  .big span{color:var(--muted);font-size:15px}
+  .intro{text-align:center;margin:8px 0 22px}
+  .intro h2{font-size:24px}
+
+  /* מסך מבוגרים - גדול וברור */
+  #v-adults{font-size:19px}
+  #v-adults input{font-size:22px;padding:14px}
+  #v-adults button{min-height:56px;font-size:19px}
+  .report{display:grid;gap:14px}
+  .rcard{background:var(--card);border:2px solid var(--line);border-radius:16px;padding:18px}
+  .rcard h3{font-size:21px;margin-bottom:10px}
+  .stepper{display:flex;align-items:center;gap:14px;justify-content:center}
+  .stepper button{width:64px;height:64px;font-size:30px;padding:0;border:2px solid var(--line);background:transparent;color:var(--ink)}
+  .stepper output{font-size:34px;font-weight:700;min-width:90px;text-align:center}
+  .sendrow{margin-top:14px}
+  .sendrow button{width:100%}
+  .sent{background:var(--ok);color:#fff}
+  .share{background:var(--brand-soft);border-radius:12px;padding:12px 14px;font-size:15px;word-break:break-all}
+  .share code{font-size:14px;user-select:all}
+  details{margin-top:8px} summary{cursor:pointer;color:var(--muted);font-size:15px}
+  .progress{height:6px;border-radius:3px;background:var(--line);overflow:hidden;margin-top:10px;display:none}
+  .progress div{height:100%;width:0;background:var(--brand);transition:width .3s}
+  .demo-text{font-size:14px;color:var(--muted);margin-top:8px;min-height:20px}
+
+  /* מסך ילדים */
+  .banner{border-radius:14px;padding:16px 18px;margin-bottom:16px;font-weight:600;border:2px solid}
+  .banner.ok{background:var(--ok-bg);border-color:var(--ok);color:var(--ok)}
+  .banner.gentle{background:var(--gentle-bg);border-color:var(--gentle);color:var(--gentle)}
+  .banner.urgent{background:var(--urgent-bg);border-color:var(--urgent);color:var(--urgent)}
+  .person{border:1px solid var(--line);border-radius:14px;padding:16px;margin-bottom:12px;background:var(--card)}
+  .person .top{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+  .pill{font-size:13px;font-weight:700;padding:3px 12px;border-radius:999px;color:#fff}
+  .pill.ok{background:var(--ok)} .pill.gentle{background:var(--gentle)} .pill.urgent{background:var(--urgent)}
+  .meta{font-size:13px;color:var(--muted)}
+  .alert{display:flex;justify-content:space-between;gap:10px;align-items:center;padding:10px 12px;border-radius:10px;margin-top:8px;border:1px solid var(--line)}
+  .alert.gentle{background:var(--gentle-bg);border-color:var(--gentle)}
+  .alert.urgent{background:var(--urgent-bg);border-color:var(--urgent)}
+  .empty{color:var(--muted);font-size:15px;padding:12px 0;text-align:center}
+  .toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:12px 20px;border-radius:10px;opacity:0;pointer-events:none;transition:opacity .2s;max-width:90vw;z-index:10}
+  .toast.show{opacity:1}
+</style>
+</head>
+<body>
+<header>
+  <div class="wrap">
+    <h1><a href="#/"><span class="logo" aria-hidden="true"></span>Care Circle</a></h1>
+    <div class="status" role="status"><span id="dot" class="dot"></span><span id="statusText">בודק חיבור…</span></div>
+  </div>
+</header>
+
+<div class="wrap"><main>
+
+  <!-- ===== מסך בית ===== -->
+  <section id="v-home" class="view">
+    <div class="intro"><h2>ברוכים הבאים</h2><p class="hint">מי אתם?</p></div>
+    <div class="choice">
+      <a class="big" href="#/adults"><div class="ico" aria-hidden="true">🧓</div><strong>מבוגרים</strong><span>מדווחים על היום שלי</span></a>
+      <a class="big" href="#/kids"><div class="ico" aria-hidden="true">👨‍👩‍👧</div><strong>ילדים</strong><span>עוקבים ומקבלים התראות</span></a>
+    </div>
+  </section>
+
+  <!-- ===== מסך מבוגרים: דיווח ===== -->
+  <section id="v-adults" class="view">
+    <div id="registerBox" class="card" hidden>
+      <h2>נעים להכיר</h2>
+      <p class="hint">רק בפעם הראשונה: איך קוראים לך?</p>
+      <form id="registerForm">
+        <label for="rname">השם שלי</label>
+        <input id="rname" required maxlength="60" autocomplete="off">
+        <label for="rcircle">שם המשפחה / המעגל</label>
+        <input id="rcircle" required maxlength="40" autocomplete="off">
+        <div class="row"><button class="primary" type="submit">להתחיל</button></div>
+      </form>
+    </div>
+
+    <div id="reportBox" hidden>
+      <div class="card">
+        <h2 id="hello"></h2>
+        <p class="hint">דווח על היום שלך. אם משהו חריג, הילדים יקבלו הודעה.</p>
+      </div>
+      <div class="report">
+        <div class="rcard">
+          <h3>באיזו שעה קמת?</h3>
+          <input id="wakeInput" type="time" value="07:00" aria-label="שעת קימה">
+          <div class="sendrow"><button class="primary" data-send="wake_time">שלח</button></div>
+        </div>
+        <div class="rcard">
+          <h3>כמה שעות ישנת?</h3>
+          <div class="stepper">
+            <button type="button" data-step="sleep:-0.5" aria-label="פחות">−</button>
+            <output id="sleepOut">8</output>
+            <button type="button" data-step="sleep:0.5" aria-label="יותר">+</button>
+          </div>
+          <div class="sendrow"><button class="primary" data-send="sleep_hours">שלח</button></div>
+        </div>
+        <div class="rcard">
+          <h3>כמה ארוחות אכלת היום?</h3>
+          <div class="stepper">
+            <button type="button" data-step="meals:-1" aria-label="פחות">−</button>
+            <output id="mealsOut">3</output>
+            <button type="button" data-step="meals:1" aria-label="יותר">+</button>
+          </div>
+          <div class="sendrow"><button class="primary" data-send="meals">שלח</button></div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:16px">
+        <h3>הקוד שלי לשיתוף עם הילדים</h3>
+        <p class="hint">הילדים מזינים את הקוד במסך שלהם כדי לעקוב אחריך.</p>
+        <div class="share"><code id="shareCode"></code></div>
+        <div class="row"><button id="copyBtn" class="ghost" type="button">העתק קוד</button>
+          <button id="switchBtn" class="linkbtn" type="button">זה לא אני</button></div>
+        <details>
+          <summary>הדגמה (לבדיקת המערכת)</summary>
+          <p class="hint" style="margin-top:8px">שולח חמישה דיווחים רגילים, ואז ערך חריג. אחרי כחצי דקה תופיע התראה במסך הילדים.</p>
+          <div class="row"><button id="demoBtn" class="ghost" type="button">הרץ הדגמה</button></div>
+          <div class="progress" id="progress"><div id="bar"></div></div>
+          <div id="demoText" class="demo-text"></div>
+        </details>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== מסך ילדים: התראות ===== -->
+  <section id="v-kids" class="view">
+    <div id="overall" class="banner ok">אין עדיין אנשים במעקב</div>
+    <div id="people"></div>
+    <div class="card">
+      <h2>הוספת הורה למעקב</h2>
+      <p class="hint">בקש מההורה את הקוד שמופיע במסך המבוגרים שלו.</p>
+      <form id="followForm" class="row" style="margin-top:0">
+        <input id="followId" placeholder="הדבק כאן את הקוד" style="flex:1;min-width:200px" autocomplete="off" required>
+        <button class="primary" type="submit">הוסף</button>
+      </form>
+    </div>
+    <div id="updated" class="meta" style="text-align:center"></div>
+  </section>
+
+</main></div>
+<div id="toast" class="toast" role="alert"></div>
+
+<script>
+(function(){
+  var TYPE_LABEL = {wake_time:"שעת קימה", sleep_hours:"שעות שינה", meals:"ארוחות"};
+  var DAY = 24*60*60*1000;
+  var $ = function(id){return document.getElementById(id)};
+  var pollTimer=null;
+
+  /* ---------- כלים ---------- */
+  function lsGet(k,def){ try{ var v=localStorage.getItem(k); return v?JSON.parse(v):def; }catch(e){ return def; } }
+  function lsSet(k,v){ try{ localStorage.setItem(k,JSON.stringify(v)); }catch(e){} }
+  function el(tag,cls,text){ var e=document.createElement(tag); if(cls) e.className=cls; if(text!=null) e.textContent=text; return e; }
+  function clear(n){ while(n.firstChild) n.removeChild(n.firstChild); }
+  function toast(msg){ var t=$("toast"); t.textContent=msg; t.classList.add("show"); clearTimeout(toast._t); toast._t=setTimeout(function(){t.classList.remove("show")},3200); }
+  function fmtTime(ts){ try{ return new Date(ts).toLocaleString("he-IL"); }catch(e){ return String(ts); } }
+  function sleep(ms){ return new Promise(function(r){setTimeout(r,ms)}); }
+
+  function api(path,opts){
+    return fetch(path,opts).then(function(r){
+      return r.text().then(function(txt){
+        var d=null; try{ d=txt?JSON.parse(txt):null; }catch(e){}
+        if(!r.ok){ var err=new Error((d&&d.error)||("שגיאה "+r.status)); err.status=r.status; throw err; }
+        return d;
+      });
+    });
+  }
+  function post(path,body){ return api(path,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)}); }
+
+  function health(){
+    fetch("/health").then(function(r){ if(!r.ok) throw 0; $("dot").className="dot up"; $("statusText").textContent="השרת פעיל"; })
+      .catch(function(){ $("dot").className="dot down"; $("statusText").textContent="אין חיבור לשרת"; });
+  }
+
+  /* ---------- ניווט ---------- */
+  function route(){
+    var h=(location.hash||"#/").replace("#/","");
+    var name = (h==="adults"||h==="kids")?h:"home";
+    ["home","adults","kids"].forEach(function(v){ $("v-"+v).classList.toggle("active", v===name); });
+    clearInterval(pollTimer); pollTimer=null;
+    if(name==="adults") renderAdults();
+    if(name==="kids"){ refreshKids(); pollTimer=setInterval(refreshKids,5000); }
+    window.scrollTo(0,0);
+  }
+  window.addEventListener("hashchange",route);
+
+  /* ============ מסך מבוגרים ============ */
+  var vals={sleep:8,meals:3};
+  function me(){ return lsGet("cc.me",null); }
+
+  function renderAdults(){
+    var m=me();
+    $("registerBox").hidden=!!m; $("reportBox").hidden=!m;
+    if(!m) return;
+    $("hello").textContent="שלום, "+m.name;
+    $("shareCode").textContent=m.id;
+  }
+
+  $("registerForm").addEventListener("submit",function(e){
+    e.preventDefault();
+    post("/people",{name:$("rname").value.trim(),circleId:$("rcircle").value.trim()}).then(function(p){
+      lsSet("cc.me",{id:p.id,name:p.name,circleId:p.circleId}); $("registerForm").reset(); renderAdults(); toast("נרשמת בהצלחה");
+    }).catch(function(err){ toast("לא הצלחנו להירשם: "+err.message); });
+  });
+
+  document.querySelectorAll("[data-step]").forEach(function(b){
+    b.addEventListener("click",function(){
+      var p=b.getAttribute("data-step").split(":"), k=p[0], d=parseFloat(p[1]);
+      var max=k==="sleep"?16:10;
+      vals[k]=Math.max(0,Math.min(max,Math.round((vals[k]+d)*2)/2));
+      $(k+"Out").textContent=vals[k];
+    });
+  });
+
+  function timeToHours(v){ var p=(v||"07:00").split(":"); return Math.round((parseInt(p[0],10)+parseInt(p[1],10)/60)*100)/100; }
+
+  function sendCheckin(type,value){
+    var m=me(); if(!m) return Promise.reject(new Error("לא נרשמת"));
+    return post("/checkins",{personId:m.id,type:type,value:Number(value)});
+  }
+
+  document.querySelectorAll("[data-send]").forEach(function(b){
+    b.addEventListener("click",function(){
+      var type=b.getAttribute("data-send"), value;
+      if(type==="wake_time") value=timeToHours($("wakeInput").value);
+      else if(type==="sleep_hours") value=vals.sleep; else value=vals.meals;
+      var old=b.textContent; b.disabled=true;
+      sendCheckin(type,value).then(function(){
+        b.textContent="נשלח ✓"; b.classList.add("sent"); toast("תודה, הדיווח נשלח");
+        setTimeout(function(){ b.textContent=old; b.classList.remove("sent"); b.disabled=false; },2500);
+      }).catch(function(err){ toast("שגיאה: "+err.message); b.disabled=false; });
+    });
+  });
+
+  $("copyBtn").addEventListener("click",function(){
+    var m=me(); if(!m) return;
+    if(navigator.clipboard&&navigator.clipboard.writeText){ navigator.clipboard.writeText(m.id).then(function(){toast("הקוד הועתק")},function(){toast("סמן והעתק ידנית")}); }
+    else toast("סמן והעתק ידנית");
+  });
+  $("switchBtn").addEventListener("click",function(){ try{localStorage.removeItem("cc.me");}catch(e){} renderAdults(); });
+
+  function setBar(p,msg){ $("progress").style.display="block"; $("bar").style.width=p+"%"; $("demoText").textContent=msg; }
+  $("demoBtn").addEventListener("click",function(){
+    var btn=$("demoBtn"); btn.disabled=true; var normal=[7.0,7.1,7.2,7.0,7.1], i=0;
+    function next(){
+      if(i<normal.length){ setBar(10+i*10,"שולח דיווח רגיל "+(i+1)+" מתוך 5…"); return sendCheckin("wake_time",normal[i++]).then(next); }
+      setBar(65,"ממתין שהמערכת תלמד את ההרגלים…");
+      return sleep(12000).then(function(){ setBar(90,"שולח ערך חריג: קימה ב-12:00…"); return sendCheckin("wake_time",12.0); })
+        .then(function(){ setBar(100,"ההדגמה הסתיימה. עוד כמה שניות תופיע התראה במסך הילדים."); });
+    }
+    next().catch(function(err){ setBar(0,"ההדגמה נעצרה: "+err.message); }).then(function(){ btn.disabled=false; });
+  });
+
+  /* ============ מסך ילדים ============ */
+  function follow(){ return lsGet("cc.follow",[]); }
+  function dismissed(){ return lsGet("cc.dismissed",[]); }
+  var lastAlerts={}; // personId -> רשימת התראות
+
+  function activeAlerts(pid){
+    var dis=dismissed(), now=Date.now();
+    return (lastAlerts[pid]||[]).filter(function(a){ return dis.indexOf(a.id)<0 && now-a.timestamp<DAY; })
+      .sort(function(a,b){return b.timestamp-a.timestamp});
+  }
+  function statusOf(list){ if(list.some(function(a){return a.severity==="urgent"})) return "urgent"; return list.length?"gentle":"ok"; }
+
+  function refreshKids(){
+    var f=follow();
+    Promise.all(f.map(function(p){
+      return api("/alerts/"+encodeURIComponent(p.id)).then(function(l){ lastAlerts[p.id]=l||[]; }).catch(function(){});
+    })).then(function(){ renderKids(); $("updated").textContent=f.length?("עודכן לאחרונה: "+new Date().toLocaleTimeString("he-IL")):""; });
+  }
+
+  function renderKids(){
+    var f=follow(), box=$("people"); clear(box);
+    var worst="ok", names=[];
+    f.forEach(function(p){
+      var list=activeAlerts(p.id), st=statusOf(list);
+      if(st==="urgent"){ worst="urgent"; names.push(p.name); } else if(st==="gentle"&&worst!=="urgent"){ worst="gentle"; }
+      var card=el("div","person");
+      var top=el("div","top");
+      var left=el("div"); left.appendChild(el("h3",null,p.name)); left.appendChild(el("div","meta","מעגל: "+p.circleId)); top.appendChild(left);
+      top.appendChild(el("span","pill "+st, st==="urgent"?"חשד לאירוע":st==="gentle"?"שינוי בהרגלים":"הכול תקין"));
+      card.appendChild(top);
+      list.slice(0,5).forEach(function(a){
+        var row=el("div","alert "+a.severity);
+        var info=el("div");
+        info.appendChild(el("div",null,(a.severity==="urgent"?"חריגה משמעותית ב":"שינוי ב")+(TYPE_LABEL[a.type]||a.type)+(a.severity==="urgent"?" - כדאי להתקשר":"")));
+        info.appendChild(el("div","meta",fmtTime(a.timestamp)));
+        row.appendChild(info);
+        var ok=el("button","ghost","טופל"); ok.type="button"; ok.style.minHeight="40px";
+        ok.addEventListener("click",function(){ var d=dismissed(); d.push(a.id); lsSet("cc.dismissed",d); renderKids(); });
+        row.appendChild(ok); card.appendChild(row);
+      });
+      var rm=el("button","linkbtn","הפסק מעקב"); rm.type="button";
+      rm.addEventListener("click",function(){ lsSet("cc.follow",follow().filter(function(x){return x.id!==p.id})); renderKids(); });
+      card.appendChild(rm); box.appendChild(card);
+    });
+    var b=$("overall"); b.className="banner "+worst;
+    if(!f.length) b.textContent="אין עדיין אנשים במעקב. הוסף הורה בעזרת הקוד שלו.";
+    else if(worst==="urgent") b.textContent="חשד לאירוע: "+names.join(", ")+". כדאי ליצור קשר עכשיו.";
+    else if(worst==="gentle") b.textContent="זוהה שינוי בהרגלים. כדאי לבדוק מה שלומם.";
+    else b.textContent="הכול תקין. אין התראות חדשות.";
+  }
+
+  $("followForm").addEventListener("submit",function(e){
+    e.preventDefault(); var id=$("followId").value.trim(); if(!id) return;
+    api("/people/"+encodeURIComponent(id)).then(function(p){
+      var f=follow(); if(!f.some(function(x){return x.id===p.id})){ f.push({id:p.id,name:p.name,circleId:p.circleId}); lsSet("cc.follow",f); }
+      $("followId").value=""; toast("נוסף למעקב: "+p.name); refreshKids();
+    }).catch(function(err){ toast(err.status===404?"הקוד לא נמצא. בדוק שהעתקת אותו נכון.":"שגיאה: "+err.message); });
+  });
+
+  /* ---------- התחלה ---------- */
+  health(); setInterval(health,10000); route();
+})();
+</script>
+</body>
+</html>

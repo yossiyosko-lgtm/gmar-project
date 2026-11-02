@@ -83,8 +83,9 @@ public class Main {
             peopleStore.save(person);
             String responseJson = gson.toJson(person);
             exchange.getResponseHeaders().set("Content-Type", "application/json");
-            exchange.sendResponseHeaders(201, responseJson.getBytes().length);
-            exchange.getResponseBody().write(responseJson.getBytes());
+            byte[] out = responseJson.getBytes(StandardCharsets.UTF_8);
+            exchange.sendResponseHeaders(201, out.length);
+            exchange.getResponseBody().write(out);
             exchange.close();
         });
 
@@ -111,8 +112,9 @@ public class Main {
             }
             String responseJson = gson.toJson(person);
             exchange.getResponseHeaders().set("Content-Type", "application/json");
-            exchange.sendResponseHeaders(200, responseJson.getBytes().length);
-            exchange.getResponseBody().write(responseJson.getBytes());
+            byte[] out = responseJson.getBytes(StandardCharsets.UTF_8);
+            exchange.sendResponseHeaders(200, out.length);
+            exchange.getResponseBody().write(out);
             exchange.close();
         });
 
@@ -162,6 +164,35 @@ public class Main {
             exchange.sendResponseHeaders(200, responseJson.getBytes().length);
             exchange.getResponseBody().write(responseJson.getBytes());
             exchange.close();
+        });
+
+        // UI — מגיש את דף הממשק (src/main/resources/static/index.html) בכתובת /
+        server.createContext("/", exchange -> {
+            String path = exchange.getRequestURI().getPath();
+            boolean isPage = path.equals("/") || path.equals("/index.html");
+            if (!"GET".equalsIgnoreCase(exchange.getRequestMethod()) || !isPage) {
+                String error = "{\"error\":\"Not Found\"}";
+                exchange.getResponseHeaders().set("Content-Type", "application/json");
+                exchange.sendResponseHeaders(404, error.getBytes().length);
+                exchange.getResponseBody().write(error.getBytes());
+                exchange.close();
+                return;
+            }
+            try (InputStream in = Main.class.getResourceAsStream("/static/index.html")) {
+                if (in == null) {
+                    String error = "{\"error\":\"UI not found\"}";
+                    exchange.getResponseHeaders().set("Content-Type", "application/json");
+                    exchange.sendResponseHeaders(404, error.getBytes().length);
+                    exchange.getResponseBody().write(error.getBytes());
+                    exchange.close();
+                    return;
+                }
+                byte[] html = in.readAllBytes();
+                exchange.getResponseHeaders().set("Content-Type", "text/html; charset=utf-8");
+                exchange.sendResponseHeaders(200, html.length);
+                exchange.getResponseBody().write(html);
+                exchange.close();
+            }
         });
 
         server.setExecutor(null);
