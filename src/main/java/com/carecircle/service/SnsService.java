@@ -1,13 +1,12 @@
 package com.carecircle.service;
 
-import software.amazon.awssdk.services.sns.SnsClient;
-import software.amazon.awssdk.services.sns.model.PublishRequest;
-import software.amazon.awssdk.regions.Region;
+import java.net.URI;
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
 import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
-import java.net.URI;
+import software.amazon.awssdk.regions.Region;
+import software.amazon.awssdk.services.sns.SnsClient;
+import software.amazon.awssdk.services.sns.model.PublishRequest;
 
-// אחראי על פרסום התראות ל-SNS Topics
 public class SnsService {
 
     private final SnsClient client;
@@ -26,23 +25,18 @@ public class SnsService {
                 .build();
     }
 
-    // פרסום התראה עדינה (z > 2)
     public void publishGentle(String message) {
-        PublishRequest request = PublishRequest.builder()
-                .topicArn(this.gentleTopicArn)
-                .message(message)
-                .subject("Care Circle - Gentle Alert")
-                .build();
-        client.publish(request);
+        publish(gentleTopicArn, message);
     }
 
-    // פרסום התראה דחופה (z > 3)
     public void publishUrgent(String message) {
-        PublishRequest request = PublishRequest.builder()
-                .topicArn(this.urgentTopicArn)
+        publish(urgentTopicArn, message);
+    }
+
+    private void publish(String topicArn, String message) {
+        client.publish(PublishRequest.builder()
+                .topicArn(topicArn)
                 .message(message)
-                .subject("Care Circle - URGENT Alert")
-                .build();
-        client.publish(request);
+                .build());
     }
 }
