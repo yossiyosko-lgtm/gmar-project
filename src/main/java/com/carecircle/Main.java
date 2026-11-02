@@ -1,222 +1,193 @@
 package com.carecircle;
 
-// HttpServer - מחלקה מובנית ב-Java (בלי framework חיצוני) שמאפשרת להקים שרת HTTP פשוט.
-// זה מה שאפשר לנו לכתוב "plain Java" בלי Spring Boot, בדיוק כמו בקורס.
 import com.sun.net.httpserver.HttpServer;
-
 import java.io.IOException;
-import java.net.InetSocketAddress; // מייצג כתובת+פורט שהשרת יאזין להם
+import java.io.InputStream;
+import java.net.InetSocketAddress;
+import java.nio.charset.StandardCharsets;
+import java.util.List;
+
 import com.carecircle.model.Person;
 import com.carecircle.model.CheckIn;
+import com.carecircle.model.Alert;
 import com.carecircle.store.PeopleStore;
 import com.carecircle.store.CheckInStore;
+import com.carecircle.store.AlertStore;
+import com.carecircle.service.SqsService;
+import com.carecircle.service.SnsService;
+import com.carecircle.worker.CheckInWorker;
+import com.carecircle.worker.SnsAlertSubscriber;
 import com.google.gson.Gson;
-import java.io.InputStream;
-import java.nio.charset.StandardCharsets;
 
-/**
- * נקודת הכניסה לתוכנית (Entry Point).
- * שלב 1 בפרויקט: שרת מינימלי שיודע לענות רק על /health.
- * בשלבים הבאים נוסיף כאן endpoints נוספים (POST /people, POST /checkins וכו')
- * ונחבר את השרת ל-DynamoDB, SQS ו-SNS דרך LocalStack.
- */
 public class Main {
 
     public static void main(String[] args) throws IOException {
-
-        // קוראים את מספר הפורט ממשתנה סביבה בשם PORT.
-        // אם הוא לא הוגדר (למשל כשמריצים מקומית בלי Docker) — נשתמש כברירת מחדל בפורט 8080.
         int port = Integer.parseInt(System.getenv().getOrDefault("PORT", "8080"));
-
-        // בונים את השרת דרך הפונקציה המשותפת (ראה למטה) - כך גם main וגם הטסטים
-        // משתמשים באותו קוד בדיוק, ולא כותבים אותו פעמיים.
         HttpServer server = createServer(port);
-
-        // מפעילים את השרת בפועל - מהרגע הזה הוא מקשיב לבקשות.
         server.start();
-
         System.out.println("Care Circle server running on port " + port);
     }
 
-    /**
-     * בונה HttpServer מוכן עם כל ה-endpoints מוגדרים, אבל עדיין לא מריץ אותו (לא קוראים start()).
-     * זה מאפשר לכל צד שקורא לפונקציה הזו (main, או טסטים) להחליט בעצמו מתי להריץ ומתי לעצור.
-     *
-     * static חשוב כאן: אין לנו אובייקט Main שנוצר (לא כתבנו new Main()), אז הפונקציה חייבת
-     * להיות static כדי שנוכל לקרוא לה ישירות דרך שם המחלקה: Main.createServer(...)
-     */
+    // השרת האמיתי - עובד מול DynamoDB
     static HttpServer createServer(int port) throws IOException {
+        return createServer(port, new PeopleStore(), new CheckInStore());
+    }
 
-        // יוצרים את השרת עצמו, ואומרים לו על איזו כתובת/פורט להאזין.
-        // ה-0 השני הוא "backlog" - כמה בקשות ממתינות מותר לצבור בתור לפני שדוחים; 0 = ברירת המחדל של המערכת.
+    // גרסה שמקבלת Stores מבחוץ - הטסטים מזריקים גרסת זיכרון
+    static HttpServer createServer(int port, PeopleStore peopleStore, CheckInStore checkInStore) throws IOException {
         HttpServer server = HttpServer.create(new InetSocketAddress(port), 0);
 
         Gson gson = new Gson();
+        AlertStore alertStore = new AlertStore();
 
-        //המשתנה שיצרנו שמכיל את כל הפרופילים
-        PeopleStore peopleStore = new PeopleStore();
-        
-        //המשתנה שמכיל את כל המידע על המשתמשים (שעת קימה זיכרון והכל)
-        CheckInStore checkInStore = new CheckInStore();
+        // כתובות SQS ו-SNS — LocalStack יוצר אותם בפורמט הזה
+        String queueUrl = System.getenv().getOrDefault(
+            "SQS_QUEUE_URL",
+            "http://sqs.us-east-1.localhost.localstack.cloud:4566/000000000000/checkin-queue");
+        String alertsQueueUrl = System.getenv().getOrDefault(
+            "ALERTS_QUEUE_URL",
+            "http://sqs.us-east-1.localhost.localstack.cloud:4566/000000000000/alerts-queue");
+        String gentleTopicArn = System.getenv().getOrDefault(
+            "GENTLE_TOPIC_ARN",
+            "arn:aws:sns:us-east-1:000000000000:gentle-alerts");
+        String urgentTopicArn = System.getenv().getOrDefault(
+            "URGENT_TOPIC_ARN",
+            "arn:aws:sns:us-east-1:000000000000:urgent-alerts");
 
-        // מגדירים "מסלול" (context): כל בקשה שמגיעה לכתובת /health תופעל דרך הקוד הזה.
-        // exchange הוא האובייקט שמייצג את הבקשה שנכנסה ואת התשובה שנרצה לשלוח.
+        SqsService sqsService = new SqsService(queueUrl);
+        SnsService snsService = new SnsService(gentleTopicArn, urgentTopicArn);
+
+        // /health — בדיקת תקינות
         server.createContext("/health", exchange -> {
-
-            // זו התשובה שנחזיר - מחרוזת JSON פשוטה שאומרת שהשרת חי ותקין.
             String response = "{\"status\":\"ok\"}";
-
-            // מודיעים לדפדפן/ל-curl שהתוכן שאנחנו מחזירים הוא JSON.
             exchange.getResponseHeaders().set("Content-Type", "application/json");
-
-            // שולחים את קוד הסטטוס 200 (הצלחה) יחד עם אורך התשובה בבתים.
             exchange.sendResponseHeaders(200, response.getBytes().length);
-
-            // כותבים בפועל את גוף התשובה, וסוגרים את החיבור.
             exchange.getResponseBody().write(response.getBytes());
             exchange.close();
         });
-        
-        // יצירת בקשה מסוג people
+
+        // POST /people — יצירת אדם חדש
         server.createContext("/people", exchange -> {
-            if (!"post".equalsIgnoreCase(exchange.getRequestMethod())){
-                String response = "{\"error\":\"post method require\"}"; 
-                
-            // מודיעים לדפדפן/ל-curl שהתוכן שאנחנו מחזירים הוא JSON.
+            if (!"POST".equalsIgnoreCase(exchange.getRequestMethod())) {
+                String error = "{\"error\":\"Method Not Allowed\"}";
+                exchange.getResponseHeaders().set("Content-Type", "application/json");
+                exchange.sendResponseHeaders(405, error.getBytes().length);
+                exchange.getResponseBody().write(error.getBytes());
+                exchange.close();
+                return;
+            }
+            InputStream inputStream = exchange.getRequestBody();
+            String json = new String(inputStream.readAllBytes(), StandardCharsets.UTF_8);
+            PersonRequest req = gson.fromJson(json, PersonRequest.class);
+            Person person = new Person(req.name, req.circleId);
+            peopleStore.save(person);
+            String responseJson = gson.toJson(person);
             exchange.getResponseHeaders().set("Content-Type", "application/json");
-
-            // שולחים את קוד הסטטוס 405 כישלון יחד עם אורך התשובה בבתים.
-            exchange.sendResponseHeaders(405, response.getBytes().length);
-
-            // כותבים בפועל את גוף התשובה, וסוגרים את החיבור.
-            exchange.getResponseBody().write(response.getBytes());
-            exchange.close();
-            
-            return;
-        }
-            
-        InputStream inputStream = exchange.getRequestBody();
-        String json = new String(inputStream.readAllBytes(), StandardCharsets.UTF_8);
-
-        PersonRequest req = gson.fromJson(json, PersonRequest.class);
-        Person person = new Person(req.name, req.circleId);
-        peopleStore.save(person);
-        String responseJson = gson.toJson(person);
-
-            // מודיעים לדפדפן/ל-curl שהתוכן שאנחנו מחזירים הוא JSON.
-            exchange.getResponseHeaders().set("Content-Type", "application/json");
-
-            // שולחים את קוד הסטטוס 200 (הצלחה) יחד עם אורך התשובה בבתים.
             exchange.sendResponseHeaders(201, responseJson.getBytes().length);
-
-            // כותבים בפועל את גוף התשובה, וסוגרים את החיבור.
             exchange.getResponseBody().write(responseJson.getBytes());
             exchange.close();
         });
 
-        //יצירת האזנה לבקשת קיבול נתונים על משתמש אחרי שנוצר, על ידי שליחת המזהה שלו
+        // GET /people/{id} — שליפת אדם לפי id
         server.createContext("/people/", exchange -> {
-           
-            if(!"Get".equalsIgnoreCase(exchange.getRequestMethod())){
-                String response = "{\"error\":\"get method require\"}";
-            
-             // מודיעים לדפדפן/ל-curl שהתוכן שאנחנו מחזירים הוא JSON.
-            exchange.getResponseHeaders().set("Content-Type", "application/json");
-
-            // שולחים את קוד הסטטוס 405 כישלון יחד עם אורך התשובה בבתים.
-            exchange.sendResponseHeaders(405, response.getBytes().length);
-
-            // כותבים בפועל את גוף התשובה, וסוגרים את החיבור.
-            exchange.getResponseBody().write(response.getBytes());
-            exchange.close();
-            
-            return;
+            if (!"GET".equalsIgnoreCase(exchange.getRequestMethod())) {
+                String error = "{\"error\":\"Method Not Allowed\"}";
+                exchange.getResponseHeaders().set("Content-Type", "application/json");
+                exchange.sendResponseHeaders(405, error.getBytes().length);
+                exchange.getResponseBody().write(error.getBytes());
+                exchange.close();
+                return;
             }
             String path = exchange.getRequestURI().getPath();
             String id = path.substring("/people/".length());
-
             Person person = peopleStore.findById(id);
-
-            if(person == null){
-                String response = "{\"error\":\"id require\"}";
-            
-            // מודיעים לדפדפן/ל-curl שהתוכן שאנחנו מחזירים הוא JSON.
-            exchange.getResponseHeaders().set("Content-Type", "application/json");
-
-            // שולחים את קוד הסטטוס 404 כישלון יחד עם אורך התשובה בבתים.
-            exchange.sendResponseHeaders(404, response.getBytes().length);
-
-            // כותבים בפועל את גוף התשובה, וסוגרים את החיבור.
-            exchange.getResponseBody().write(response.getBytes());
-            exchange.close();
-            
-            return;
-          
-        }else{
-            
-            String responseJson = gson.toJson(person);
-
-            // מודיעים לדפדפן/ל-curl שהתוכן שאנחנו מחזירים הוא JSON.
-            exchange.getResponseHeaders().set("Content-Type", "application/json");
-
-            // שולחים את קוד הסטטוס 200 (הצלחה) יחד עם אורך התשובה בבתים.
-            exchange.sendResponseHeaders(200, responseJson.getBytes().length);
-
-            // כותבים בפועל את גוף התשובה, וסוגרים את החיבור.
-            exchange.getResponseBody().write(responseJson.getBytes());
-            exchange.close();
-
+            if (person == null) {
+                String error = "{\"error\":\"Person not found\"}";
+                exchange.getResponseHeaders().set("Content-Type", "application/json");
+                exchange.sendResponseHeaders(404, error.getBytes().length);
+                exchange.getResponseBody().write(error.getBytes());
+                exchange.close();
+                return;
             }
-        });
-
-        server.createContext("/checkins", exchange ->{
-             if (!"post".equalsIgnoreCase(exchange.getRequestMethod())){
-                String response = "{\"error\":\"post method require\"}"; 
-                
-            // מודיעים לדפדפן/ל-curl שהתוכן שאנחנו מחזירים הוא JSON.
+            String responseJson = gson.toJson(person);
             exchange.getResponseHeaders().set("Content-Type", "application/json");
-
-            // שולחים את קוד הסטטוס 405 כישלון יחד עם אורך התשובה בבתים.
-            exchange.sendResponseHeaders(405, response.getBytes().length);
-
-            // כותבים בפועל את גוף התשובה, וסוגרים את החיבור.
-            exchange.getResponseBody().write(response.getBytes());
-            exchange.close();
-            
-            return;
-        }
-            
-        InputStream inputStream = exchange.getRequestBody();
-        String json = new String(inputStream.readAllBytes(), StandardCharsets.UTF_8);
-
-        CheckInsRequest req = gson.fromJson(json, CheckInsRequest.class);
-        CheckIn checkIn = new CheckIn(req.personId, req.type, req.value);
-        checkInStore.save(checkIn);
-        String responseJson = gson.toJson(checkIn);
-
-            // מודיעים לדפדפן/ל-curl שהתוכן שאנחנו מחזירים הוא JSON.
-            exchange.getResponseHeaders().set("Content-Type", "application/json");
-
-            // שולחים את קוד הסטטוס 201 (הצלחה) יחד עם אורך התשובה בבתים.
-            exchange.sendResponseHeaders(201, responseJson.getBytes().length);
-
-            // כותבים בפועל את גוף התשובה, וסוגרים את החיבור.
+            exchange.sendResponseHeaders(200, responseJson.getBytes().length);
             exchange.getResponseBody().write(responseJson.getBytes());
             exchange.close();
         });
 
+        // POST /checkins — שמירה + שליחה ל-SQS
+        server.createContext("/checkins", exchange -> {
+            if (!"POST".equalsIgnoreCase(exchange.getRequestMethod())) {
+                String error = "{\"error\":\"Method Not Allowed\"}";
+                exchange.getResponseHeaders().set("Content-Type", "application/json");
+                exchange.sendResponseHeaders(405, error.getBytes().length);
+                exchange.getResponseBody().write(error.getBytes());
+                exchange.close();
+                return;
+            }
+            InputStream inputStream = exchange.getRequestBody();
+            String json = new String(inputStream.readAllBytes(), StandardCharsets.UTF_8);
+            CheckInsRequest req = gson.fromJson(json, CheckInsRequest.class);
+            CheckIn checkIn = new CheckIn(req.personId, req.type, req.value);
+            checkInStore.save(checkIn);
+            // שליחה ל-SQS לעיבוד אסינכרוני על ידי CheckInWorker
+            try {
+                sqsService.sendMessage(gson.toJson(checkIn));
+            } catch (Exception e) {
+                System.err.println("SQS send failed: " + e.getMessage());
+            }
+            String responseJson = gson.toJson(checkIn);
+            exchange.getResponseHeaders().set("Content-Type", "application/json");
+            exchange.sendResponseHeaders(201, responseJson.getBytes().length);
+            exchange.getResponseBody().write(responseJson.getBytes());
+            exchange.close();
+        });
 
-        // null אומר לשרת להשתמש ב-executor המובנה שלו (thread לכל בקשה) - מספיק לצרכי הפרויקט הזה.
+        // GET /alerts/{personId} — שליפת התראות לאדם
+        server.createContext("/alerts/", exchange -> {
+            if (!"GET".equalsIgnoreCase(exchange.getRequestMethod())) {
+                String error = "{\"error\":\"Method Not Allowed\"}";
+                exchange.getResponseHeaders().set("Content-Type", "application/json");
+                exchange.sendResponseHeaders(405, error.getBytes().length);
+                exchange.getResponseBody().write(error.getBytes());
+                exchange.close();
+                return;
+            }
+            String path = exchange.getRequestURI().getPath();
+            String personId = path.substring("/alerts/".length());
+            List<Alert> alerts = alertStore.findByPersonId(personId);
+            String responseJson = gson.toJson(alerts);
+            exchange.getResponseHeaders().set("Content-Type", "application/json");
+            exchange.sendResponseHeaders(200, responseJson.getBytes().length);
+            exchange.getResponseBody().write(responseJson.getBytes());
+            exchange.close();
+        });
+
         server.setExecutor(null);
+
+        // הפעלת Workers כ-daemon threads (נעצרים אוטומטית עם השרת)
+        try {
+            CheckInWorker worker = new CheckInWorker(queueUrl, snsService);
+            worker.setDaemon(true);
+            worker.start();
+
+            SnsAlertSubscriber alertSubscriber = new SnsAlertSubscriber(alertsQueueUrl, alertStore);
+            alertSubscriber.setDaemon(true);
+            alertSubscriber.start();
+        } catch (Exception e) {
+            System.err.println("Worker startup failed: " + e.getMessage());
+        }
 
         return server;
     }
-    private static class PersonRequest{
+
+    private static class PersonRequest {
         String name;
         String circleId;
     }
 
-    private static class CheckInsRequest{
+    private static class CheckInsRequest {
         String personId;
         String type;
         double value;

@@ -1,9 +1,5 @@
-# target/ - כל מה ש-Maven בונה (class files, jar) - אין טעם לשמור ב-Git, זה נוצר מחדש בכל build
 target/
-
-# קבצי הגדרות אישיים של VS Code - שייכים למחשב שלך, לא לפרויקט
+dependency-reduced-pom.xml
+.idea/
 .vscode/
-
-# קבצי מערכת של macOS/Windows שלפעמים נכנסים בטעות
-.DS_Store
-Thumbs.db
+*.class
