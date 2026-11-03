@@ -96,9 +96,104 @@
   .empty{color:var(--muted);font-size:15px;padding:12px 0;text-align:center}
   .toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:12px 20px;border-radius:10px;opacity:0;pointer-events:none;transition:opacity .2s;max-width:90vw;z-index:10}
   .toast.show{opacity:1}
+
+/* ===== מסך פתיחה ===== */
+#splash{position:fixed;inset:0;z-index:100;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;overflow:hidden;color:#fff;text-align:center;
+  background:linear-gradient(135deg,#0f4c45,#1f7a6d,#2a9d8f,#17405f);background-size:300% 300%;animation:bgShift 12s ease infinite;
+  transition:opacity .7s ease,transform .7s ease,visibility .7s}
+#splash.leaving{opacity:0;transform:scale(1.08);visibility:hidden;pointer-events:none}
+@keyframes bgShift{0%{background-position:0% 50%}50%{background-position:100% 50%}100%{background-position:0% 50%}}
+.blob{position:absolute;border-radius:50%;filter:blur(40px);opacity:.35;animation:floaty 9s ease-in-out infinite}
+.blob.b1{width:320px;height:320px;background:#7ee0d0;top:-80px;right:-60px}
+.blob.b2{width:260px;height:260px;background:#ffd98a;bottom:-60px;left:-40px;animation-delay:-3s}
+.blob.b3{width:200px;height:200px;background:#8fb8ff;top:40%;left:55%;animation-delay:-6s}
+@keyframes floaty{0%,100%{transform:translate(0,0) scale(1)}50%{transform:translate(-30px,40px) scale(1.15)}}
+.pt{position:absolute;bottom:-30px;color:rgba(255,255,255,.75);animation:rise linear infinite;pointer-events:none}
+@keyframes rise{0%{transform:translateY(0) rotate(0);opacity:0}10%{opacity:1}100%{transform:translateY(-110vh) rotate(360deg);opacity:0}}
+.logo-art{width:min(52vw,220px);height:auto;filter:drop-shadow(0 0 22px rgba(255,255,255,.45));animation:logoIn 1s cubic-bezier(.2,.9,.3,1.3) both}
+@keyframes logoIn{from{transform:scale(.2) rotate(-90deg);opacity:0}to{transform:none;opacity:1}}
+.ring{fill:none;stroke:#fff;stroke-width:5;stroke-linecap:round;stroke-dasharray:520;stroke-dashoffset:520;animation:draw 1.6s .2s ease forwards}
+@keyframes draw{to{stroke-dashoffset:0}}
+.orbit{fill:#fff;transform-origin:100px 100px;opacity:0;animation:spin 8s linear infinite,showIn .6s 1.3s forwards}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes showIn{to{opacity:1}}
+.heart{fill:#fff;opacity:0;transform-origin:100px 100px;animation:heartIn .6s .8s forwards,beat 1.3s 1.6s ease-in-out infinite}
+@keyframes heartIn{to{opacity:1}}
+@keyframes beat{0%,100%{transform:scale(1)}15%{transform:scale(1.18)}30%{transform:scale(1)}45%{transform:scale(1.12)}}
+.ecg{width:min(70vw,260px);height:40px}
+.ecg polyline{fill:none;stroke:#fff;stroke-width:3;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:300;stroke-dashoffset:300;animation:ecg 2.4s 1s ease-in-out infinite}
+@keyframes ecg{0%{stroke-dashoffset:300}60%{stroke-dashoffset:0}100%{stroke-dashoffset:-300}}
+.sp-title{font-size:clamp(34px,8vw,56px);font-weight:800;letter-spacing:1px;display:flex;direction:ltr}
+.sp-title span{display:inline-block;opacity:0;transform:translateY(24px);animation:letter .6s ease forwards}
+@keyframes letter{to{opacity:1;transform:none}}
+.sp-tag{font-size:20px;opacity:0;animation:fadeIn 1s 1.8s ease forwards}
+.sp-sub{font-size:14px;opacity:0;animation:fadeIn 1s 2.2s ease forwards}
+@keyframes fadeIn{to{opacity:.92}}
+.sp-btn{margin-top:14px;background:#fff;color:#0f4c45;font-weight:700;font-size:20px;padding:14px 48px;border-radius:999px;border:none;opacity:0;transform:translateY(12px);min-height:56px;
+  animation:btnIn .7s 2.6s ease forwards,glow 2s 3.3s ease-in-out infinite}
+@keyframes btnIn{to{opacity:1;transform:none}}
+@keyframes glow{0%,100%{box-shadow:0 0 0 0 rgba(255,255,255,.55)}50%{box-shadow:0 0 0 16px rgba(255,255,255,0)}}
+.sp-skip{position:absolute;bottom:16px;font-size:13px;opacity:.7}
+
+/* ===== אפקטים באפליקציה ===== */
+header{transition:transform .6s .15s ease,opacity .6s .15s ease}
+body:not(.entered) header{transform:translateY(-100%);opacity:0}
+button{position:relative;overflow:hidden}
+.rip{position:absolute;border-radius:50%;background:currentColor;opacity:.28;transform:scale(0);animation:rip .6s ease-out forwards;pointer-events:none}
+@keyframes rip{to{transform:scale(4);opacity:0}}
+.view.active{animation:viewIn .5s ease both}
+@keyframes viewIn{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}
+.choice .big,.rcard{animation:cardIn .6s ease both}
+.choice .big:nth-child(2),.rcard:nth-child(2){animation-delay:.12s}
+.rcard:nth-child(3){animation-delay:.24s}
+@keyframes cardIn{from{opacity:0;transform:translateY(22px) scale(.97)}to{opacity:1;transform:none}}
+.big{transition:transform .25s,border-color .25s,box-shadow .25s}
+.big:hover{transform:translateY(-6px);box-shadow:0 14px 30px rgba(31,122,109,.28)}
+.big .ico{display:inline-block;animation:bob 3s ease-in-out infinite}
+.big:nth-child(2) .ico{animation-delay:-1.5s}
+@keyframes bob{0%,100%{transform:translateY(0)}50%{transform:translateY(-8px)}}
+.rcard{transition:transform .2s,box-shadow .2s,border-color .2s}
+.rcard:hover{transform:translateY(-2px);border-color:var(--brand)}
+.primary{transition:transform .15s,filter .15s}
+.primary:hover:not(:disabled){filter:brightness(1.08)}
+.primary:active:not(:disabled){transform:scale(.97)}
+.dot.up{animation:pulseDot 2s infinite}
+@keyframes pulseDot{0%{box-shadow:0 0 0 0 rgba(47,133,90,.6)}70%{box-shadow:0 0 0 8px rgba(47,133,90,0)}100%{box-shadow:0 0 0 0 rgba(47,133,90,0)}}
+.banner.urgent{animation:urgentPulse 1.6s ease-in-out infinite}
+@keyframes urgentPulse{0%,100%{box-shadow:0 0 0 0 rgba(197,48,48,.45)}50%{box-shadow:0 0 0 10px rgba(197,48,48,0)}}
+.pill.urgent{animation:blink 1.2s infinite}
+@keyframes blink{50%{opacity:.6}}
+.toast{transform:translate(-50%,20px);transition:opacity .25s,transform .25s}
+.toast.show{transform:translate(-50%,0)}
+.sent{animation:pop .4s ease}
+@keyframes pop{50%{transform:scale(1.06)}}
+.cf{position:fixed;width:9px;height:14px;z-index:90;pointer-events:none;border-radius:2px;animation:cf .9s ease-out forwards}
+@keyframes cf{to{transform:translate(var(--dx),var(--dy)) rotate(var(--rot));opacity:0}}
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation-duration:.01ms!important;animation-delay:0s!important;animation-iteration-count:1!important;transition-duration:.01ms!important;transition-delay:0s!important}
+}
 </style>
 </head>
 <body>
+<div id="splash" role="dialog" aria-label="Care Circle">
+  <div class="blob b1"></div><div class="blob b2"></div><div class="blob b3"></div>
+  <div id="spParts" aria-hidden="true"></div>
+  <svg class="logo-art" viewBox="0 0 200 200" aria-hidden="true">
+    <circle class="ring" cx="100" cy="100" r="82"/>
+    <g class="orbit">
+      <circle cx="100" cy="18" r="7"/><circle cx="178" cy="75" r="7"/><circle cx="148" cy="167" r="7"/>
+      <circle cx="52" cy="167" r="7"/><circle cx="22" cy="75" r="7"/>
+    </g>
+    <path class="heart" d="M100 132 C62 104 58 76 78 68 C90 63 98 69 100 76 C102 69 110 63 122 68 C142 76 138 104 100 132 Z"/>
+  </svg>
+  <div class="sp-title" id="spTitle" aria-label="Care Circle"></div>
+  <div class="sp-tag">שומרים על המעגל שלנו</div>
+  <svg class="ecg" viewBox="0 0 260 40" aria-hidden="true"><polyline points="0,20 60,20 78,20 90,4 102,36 114,12 124,20 260,20"/></svg>
+  <div class="sp-sub">ניטור בריאות משפחתי חכם</div>
+  <button class="sp-btn" id="spEnter" type="button">כניסה</button>
+  <div class="sp-skip">לחצו בכל מקום כדי לדלג</div>
+</div>
+
 <header>
   <div class="wrap">
     <h1><a href="#/"><span class="logo" aria-hidden="true"></span>Care Circle</a></h1>
@@ -369,6 +464,69 @@
 
   /* ---------- התחלה ---------- */
   health(); setInterval(health,10000); route();
+})();
+</script>
+
+<script>
+(function(){
+  var sp=document.getElementById("splash");
+  var seen=false; try{ seen=sessionStorage.getItem("cc.splash")==="1"; }catch(e){}
+  function entered(){ document.body.classList.add("entered"); }
+
+  function enter(){
+    if(!sp||sp._gone) return; sp._gone=true;
+    try{ sessionStorage.setItem("cc.splash","1"); }catch(e){}
+    sp.classList.add("leaving"); entered();
+    setTimeout(function(){ if(sp.parentNode) sp.parentNode.removeChild(sp); },900);
+  }
+
+  if(!sp||seen){ if(sp&&sp.parentNode) sp.parentNode.removeChild(sp); entered(); }
+  else {
+    var t=document.getElementById("spTitle"), txt="Care\u00a0Circle";
+    for(var i=0;i<txt.length;i++){ var s=document.createElement("span"); s.textContent=txt.charAt(i); s.style.animationDelay=(0.9+i*0.07)+"s"; t.appendChild(s); }
+    var box=document.getElementById("spParts"), sym=["\u2665","\u2022","\u2726","\u2022"];
+    for(var j=0;j<24;j++){
+      var p=document.createElement("span"); p.className="pt"; p.textContent=sym[j%sym.length];
+      p.style.left=(Math.random()*100)+"%"; p.style.fontSize=(10+Math.random()*16)+"px";
+      p.style.animationDuration=(7+Math.random()*8)+"s"; p.style.animationDelay=(-Math.random()*12)+"s";
+      box.appendChild(p);
+    }
+    var btn=document.getElementById("spEnter");
+    btn.addEventListener("click",function(e){ e.stopPropagation(); enter(); });
+    sp.addEventListener("click",function(){ enter(); });
+    document.addEventListener("keydown",function(e){ if(e.key==="Enter"||e.key===" "||e.key==="Escape"){ e.preventDefault(); enter(); } });
+    setTimeout(function(){ try{ btn.focus(); }catch(e){} },2700);
+  }
+
+  /* אפקט אדווה בלחיצה על כפתורים */
+  document.addEventListener("click",function(e){
+    var b=e.target.closest?e.target.closest("button"):null; if(!b||b.disabled) return;
+    var r=b.getBoundingClientRect(), d=Math.max(r.width,r.height), x=document.createElement("span");
+    x.className="rip"; x.style.width=x.style.height=d+"px";
+    x.style.left=(e.clientX-r.left-d/2)+"px"; x.style.top=(e.clientY-r.top-d/2)+"px";
+    b.appendChild(x); setTimeout(function(){ if(x.parentNode) x.parentNode.removeChild(x); },700);
+  });
+
+  /* קונפטי כשדיווח נשלח בהצלחה */
+  var COLORS=["#2a9d8f","#f4b942","#e76f51","#6c8ef5","#7ee0d0"];
+  function burst(el){
+    var r=el.getBoundingClientRect(), cx=r.left+r.width/2, cy=r.top+r.height/2;
+    for(var i=0;i<22;i++){
+      var c=document.createElement("span"), a=Math.random()*Math.PI*2, dist=60+Math.random()*110;
+      c.className="cf"; c.style.left=cx+"px"; c.style.top=cy+"px"; c.style.background=COLORS[i%COLORS.length];
+      c.style.setProperty("--dx",(Math.cos(a)*dist)+"px"); c.style.setProperty("--dy",(Math.sin(a)*dist+40)+"px");
+      c.style.setProperty("--rot",(Math.random()*720-360)+"deg");
+      document.body.appendChild(c); (function(n){ setTimeout(function(){ if(n.parentNode) n.parentNode.removeChild(n); },1000); })(c);
+    }
+  }
+  if(window.MutationObserver){
+    new MutationObserver(function(list){
+      list.forEach(function(m){
+        var t=m.target; if(!t.classList) return;
+        if(t.classList.contains("sent")){ if(!t._cf){ t._cf=1; burst(t); } } else { t._cf=0; }
+      });
+    }).observe(document.body,{subtree:true,attributes:true,attributeFilter:["class"]});
+  }
 })();
 </script>
 </body>
